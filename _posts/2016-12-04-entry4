@@ -1,0 +1,28 @@
+
+
+---
+layout: page
+title: "Entry4  - 04/12-16"
+description: "Entry4"
+---
+{% include JB/setup %}
+
+**Kallisto pipeline**
+
+I have been studying the Kallisto pipeline and looked at the paper. Below I will write a short description of the workflow and comment on a question that came up when thinking about the best way to proceed.
+
+The Kallisto algorithm
+As already noted, Kallisto is a tool for RNA-seq transcript counting without prior mapping. However, it actually do have a kind of alignment which the authors call "psuedoalignment". The first alignment-free quantifications tools was based on the appraoch of shredding the transcriptome and the sequencing reads into k-mers. Then, the you match the k-mers of the reads and the transcriptome to identify the transcripts. This approach is used for example in the "Sailfish" tool. Kallisto works a little bit different as it is based on the creation of "de Bruijn graphs". The transcriptome is shredded into k-mers and de Bruijn graphs are created from the pieces. The shredded read k-mers are then aligned to this de Bruijn graph (aka "psuedoalignment") to find the path with highest probability. The following picture from the [Kallisto paper](http://www.nature.com/nbt/journal/v34/n5/full/nbt.3519.html) describes this nicely:
+
+![Psuedoalignment](({{ site.url }}/assets/images/Kallisto.PNG)
+
+The black is a read from RNA-seq experiment. We have 3 different transcripts (pink, blue, green) that the read could originate from. The index is constructed by creating the de Bruijn graph (nodes = k-mers), you see the path for the 3 different possible transcripts colored in the figure. After shredding the read into k-mers, these k-mers are then "psuedoaligned" against the de Bruijn graph to find the most probable path.
+
+**In order to create a "fair" comparison**
+So, given the algorithm above, we have to create this de Bruijn graph index by shredding a transcriptome reference. Here, one faces a decision in which transcript-database to actually shred. In the past, I have only used mapping-based tools, and when doing so, always worked from the idea that one should map against the genome and not the transcriptome. The rationale being that in general the transcriptome is currently not that well characterized compared to the genome to use as a reference. The transcriptomes are incomplete and you might miss alignments of interest. As there are a number of ways to "design" the transcriptome reference, which transcripts are included or not, one could argue that mapping against the genome is more objective and suffers from less bias.
+
+This made me paus at the first step of the Kallisto pipeline, when creating the transcriptome index, which database of sequences should I "shredd" into k-mers? We will be using the latest version of the complete human genome from Ensambl (GRCh38) for the STAR mapping. To make the comparison as fair as possible, which data should I use for Kallisto? The cDNA-fasta from the Ensamble website? Should I also add the ncRNA-fasta sequences? As we have treated some samples with viruses, there will be viral transcripts present in some of the samples. Should the transcripts of the viral genes be included as well? How would that affect the assignment of reads to transcripts?
+
+Since the starting point for our biological question is how the human transcriptome is changed during the different treatments, one could argue for not including the viral transcripts in the reference database. Accordingly, for comparison, the viral reference genome would also be skipped during STAR mapping for the alignment-based methods. I think this is the approach we will start out with, exclusion of viral transcript/genome-references. If it all works out, the reads that originate from the virus should be unmapped during STAR alignment, and not-assigned during Kallisto counting.
+
+I guess this is a open question but of now, I will start with the idea of using the GTCh38 cDNA sequences + GRCh38 ncRNA sequences (I have actually not been able to get a definitive answer regarding if the cDNA set from Ensambl also includes the ncRNA?)
